@@ -1,0 +1,11 @@
+# macOS
+.DS_Store
+
+# Editor / local
+.claude/settings.local.json
+
+# Logs
+*.log
+
+# Локальные оригиналы видео (несжатые, вне репозитория)
+_video_originals/

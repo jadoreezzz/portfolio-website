@@ -1,0 +1,6 @@
+# Netlify config — статический сайт, без шага сборки
+[build]
+  publish = "."
+  command = ""
+
+# index.html отдаётся для корня автоматически
