@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>саня</title>
+<title>jadoree</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 :root { --bg:#080808; --card:#0f0f0f; --border:#1c1c1c; --text:#e8e8e8; --muted:#333; }
@@ -145,6 +145,51 @@ body.popup-open #squeeze { opacity:1; pointer-events:all; }
 #wire-svg { position:fixed; inset:0; pointer-events:none; z-index:7000; overflow:visible; }
 #wire-path { fill:none; stroke:rgba(255,255,255,.45); stroke-width:1.5; stroke-dasharray:5 3; filter:drop-shadow(0 0 5px rgba(255,255,255,.18)); }
 #wire-dot  { fill:rgba(255,255,255,.6); filter:drop-shadow(0 0 4px rgba(255,255,255,.3)); }
+
+/* general node pulse ring */
+.node.pulse::after { content:''; position:absolute; inset:-5px; border-radius:18px; border:1px solid rgba(255,255,255,.14); animation:pulseRing .5s ease-out forwards; pointer-events:none; }
+
+/* empty / placeholder stack cards */
+.stack-card.ph { background:repeating-linear-gradient(135deg,#0c0c0c,#0c0c0c 7px,#101010 7px,#101010 14px); }
+.nd-empty .stack-meta { color:#3a3a3a; }
+
+/* ═══ panel nodes (form / contacts) ═══ */
+.nd-panel, .nd-contact { width:232px; cursor:grab; }
+.pn-head { padding:13px 16px 11px; border-bottom:1px solid #141414; }
+.pn-tag { display:block; font-size:8px; color:#262626; letter-spacing:.1em; text-transform:uppercase; margin-bottom:7px; }
+.pn-title { font-size:14px; font-weight:700; color:#cccccc; text-transform:uppercase; letter-spacing:-.01em; }
+.pn-body { padding:14px 16px 16px; display:flex; flex-direction:column; }
+.pn-label { font-size:8px; color:#3a3a3a; letter-spacing:.09em; text-transform:uppercase; margin:8px 0 5px; }
+.pn-input { background:#141414; border:1px solid #242424; border-radius:9px; padding:9px 11px; color:#dddddd; font-family:inherit; font-size:11px; outline:none; resize:none; user-select:text; -webkit-user-select:text; cursor:text; transition:border-color .2s; }
+.pn-input:focus { border-color:#3a3a3a; }
+.pn-input::placeholder { color:#333333; }
+.pn-btn { margin-top:14px; background:#e8e8e8; color:#0a0a0a; border:none; border-radius:9px; padding:10px; font-family:inherit; font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; transition:opacity .2s; }
+.pn-btn:hover { opacity:.85; }
+.ct-row { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-top:1px solid #141414; text-decoration:none; cursor:pointer; }
+.ct-label { font-size:8px; color:#3a3a3a; letter-spacing:.1em; text-transform:uppercase; }
+.ct-val { font-size:11px; color:#bbbbbb; transition:color .2s; }
+.ct-row:hover .ct-val { color:#ffffff; }
+
+/* ═══ double-click context menu ═══ */
+#cmenu {
+  position:fixed; z-index:12000; width:300px; max-width:calc(100vw - 24px);
+  background:#0d0d0d; border:1px solid #232323; border-radius:20px;
+  padding:12px; box-shadow:0 24px 70px rgba(0,0,0,.75);
+  font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
+  display:none; opacity:0; transform:scale(.96); transform-origin:top left;
+  transition:opacity .16s, transform .16s cubic-bezier(.2,.8,.2,1);
+}
+#cmenu.open { opacity:1; transform:scale(1); }
+.cm-search { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.cm-box { flex:1; display:flex; align-items:center; gap:9px; background:#141414; border:1px solid #262626; border-radius:12px; padding:10px 13px; }
+.cm-ic { color:#555555; font-size:16px; line-height:1; }
+#cm-input { flex:1; background:transparent; border:none; outline:none; color:#e8e8e8; font-family:inherit; font-size:15px; }
+#cm-input::placeholder { color:#555555; }
+.cm-filter { width:40px; height:40px; flex-shrink:0; border-radius:50%; border:1px solid #262626; background:#141414; color:#666666; display:flex; align-items:center; justify-content:center; font-size:15px; cursor:pointer; }
+.cm-list { display:flex; flex-direction:column; margin-top:2px; }
+.cm-item { padding:12px; border-radius:11px; color:#e8e8e8; font-size:15px; cursor:pointer; transition:background .12s; }
+.cm-item:hover { background:#1a1a1a; }
+.cm-item.hidden { display:none; }
 </style>
 </head>
 <body>
@@ -176,15 +221,24 @@ body.popup-open #squeeze { opacity:1; pointer-events:all; }
   <circle id="wire-dot" cx="-999" cy="-999" r="5"/>
 </svg>
 <div id="topbar">
-  <div id="tb-name">саня</div>
+  <div id="tb-name">jadoree</div>
   <div id="tb-meta"><span id="tb-time"></span><span>©2026</span></div>
 </div>
-<div id="nav">
-  <button class="nav-btn active">home</button>
-  <button class="nav-btn">works</button>
-  <button class="nav-btn">about</button>
-  <button class="nav-btn">contact</button>
+
+<!-- double-click context menu -->
+<div id="cmenu">
+  <div class="cm-search">
+    <div class="cm-box"><span class="cm-ic">⌕</span><input id="cm-input" type="text" placeholder="Search" autocomplete="off" spellcheck="false"></div>
+    <div class="cm-filter">≡</div>
+  </div>
+  <div class="cm-list" id="cm-list">
+    <div class="cm-item" data-act="start">Start project with me</div>
+    <div class="cm-item" data-act="contacts">Contacts</div>
+    <div class="cm-item" data-act="about">About me</div>
+    <div class="cm-item" data-act="restart">Restart Web</div>
+  </div>
 </div>
+
 <div id="toast"></div>
 
 <script>
@@ -195,6 +249,14 @@ const PROJECTS = [
     videos:['videos/dibrain/01.mp4','videos/dibrain/02.mp4','videos/dibrain/03.mp4','videos/dibrain/04.mp4','videos/dibrain/05.mp4','videos/dibrain/06.mp4','videos/dibrain/07.mp4','videos/dibrain/08.mp4'].map(vp) },
   { id:'huggito', name:'Huggito', tag:'AI · Content · 2024', desc:'AI-driven content strategy and generative visuals for Huggito social presence.', spawnDX:340, spawnDY:120,
     videos:['videos/huggito/01.mp4','videos/huggito/02.mp4','videos/huggito/03.mp4','videos/huggito/04.mp4','videos/huggito/05.mp4','videos/huggito/06.mp4','videos/huggito/07.mp4','videos/huggito/08.mp4'].map(vp) }
+];
+
+// ── contact info (edit these) ──
+const CONTACT_EMAIL = 'jadorelarami@gmail.com';
+const CONTACTS = [
+  { label:'Email',     val:'jadorelarami@gmail.com', href:'mailto:jadorelarami@gmail.com' },
+  { label:'Telegram',  val:'@jadoree',               href:'https://t.me/jadoree' },
+  { label:'Instagram', val:'@jadoree',               href:'https://instagram.com/jadoree' }
 ];
 
 const world=document.getElementById('world'), connSvg=document.getElementById('conn'), canvas=document.getElementById('canvas'), gridEl=document.getElementById('grid');
@@ -232,17 +294,11 @@ function renderEdges(){
 function createHub(x,y){
   const id=++nid; const el=document.createElement('div');
   el.className='node nd-hub'; el.dataset.id=id; el.style.left=x+'px'; el.style.top=y+'px';
-  el.innerHTML=`<div class="hub-head"><span class="hub-tag">node · category</span></div><div class="hub-title">AI &amp; Social<br>Media</div><div class="hub-sub">content direction</div><div class="hub-foot"><span class="hub-hint">tap to reveal</span><span class="hub-counter" id="hub-counter">0/${PROJECTS.length}</span></div><div class="port port-out"></div>`;
+  el.innerHTML=`<div class="hub-head"><span class="hub-tag">node · category</span></div><div class="hub-title">AI &amp; Social<br>Media</div><div class="hub-sub">content direction</div><div class="hub-foot"><span class="hub-hint">root node</span><span class="hub-counter full">live</span></div><div class="port port-out"></div>`;
   world.appendChild(el);
   el.addEventListener('mousedown',e=>{if(e.target.classList.contains('port'))return;e.stopPropagation();el._dragMoved=false;el._dragSX=e.clientX;el._dragSY=e.clientY;startDragNode(e,id);});
   el.querySelector('.port-out').addEventListener('mousedown',e=>{e.preventDefault();e.stopPropagation();startWire(e,id);});
-  el.addEventListener('click',e=>{
-    if(e.target.classList.contains('port')||el._dragMoved)return;
-    if(spawnedCount>=PROJECTS.length){pulse(el);return;}
-    spawnProject(spawnedCount,id); spawnedCount++;
-    const ctr=document.getElementById('hub-counter'); ctr.textContent=`${spawnedCount}/${PROJECTS.length}`;
-    if(spawnedCount>=PROJECTS.length) ctr.classList.add('full'); pulse(el);
-  });
+  el.addEventListener('click',e=>{ if(e.target.classList.contains('port')||el._dragMoved)return; pulse(el); });
   nodes.push({id,type:'hub',x,y,el}); return nodes[nodes.length-1];
 }
 
@@ -272,6 +328,88 @@ function spawnProject(idx,fromId){
   requestAnimationFrame(()=>requestAnimationFrame(()=>{ el.style.opacity='1'; el.style.transform=''; setTimeout(()=>el.style.transition='',500); }));
   const node={id,type:'stack',x:bx,y:by,el,proj}; nodes.push(node);
   if(fromId) setTimeout(()=>addEdge(fromId,id),60);
+}
+
+// ── generic draggable wiring (nodes that aren't hub/stack) ──
+function wireNode(el,id){
+  el.addEventListener('mousedown',e=>{
+    if(e.target.closest('.port, input, textarea, button, a, .no-drag'))return;
+    e.stopPropagation(); el._dragMoved=false; el._dragSX=e.clientX; el._dragSY=e.clientY; startDragNode(e,id);
+  });
+  const po=el.querySelector('.port-out'); if(po) po.addEventListener('mousedown',e=>{e.preventDefault();e.stopPropagation();startWire(e,id);});
+}
+
+// ── empty / placeholder stack node (photos, about) ──
+function createEmptyStack(name,tag,x,y,connectTo,onClick){
+  const id=++nid; const el=document.createElement('div');
+  el.className='node nd-stack nd-empty'; el.dataset.id=id; el.style.left=x+'px'; el.style.top=y+'px';
+  const MAX=4; let html='<div class="stack-wrap">';
+  for(let i=0;i<MAX;i++){ const d=MAX-1-i, r=-d*2.8, tx=-d*7, ty=d*7, sc=1-d*0.018;
+    html+=`<div class="stack-card ph" style="z-index:${i};transform:rotate(${r}deg) translate(${tx}px,${ty}px) scale(${sc})"></div>`; }
+  html+='</div>';
+  el.innerHTML=html+`<div class="stack-foot"><div><div class="stack-name">${name}</div><div class="stack-meta">${tag}</div></div><div class="stack-open">soon</div></div><div class="port port-in"></div><div class="port port-out"></div>`;
+  world.appendChild(el); wireNode(el,id);
+  el.addEventListener('mouseenter',()=>{ el.querySelectorAll('.stack-card').forEach((c,i)=>{ const d=MAX-1-i; c.style.transform=`rotate(${-d*3.5}deg) translate(${-d*10}px,${d*5}px) scale(${1-d*0.018})`; }); });
+  el.addEventListener('mouseleave',()=>{ el.querySelectorAll('.stack-card').forEach((c,i)=>{ const d=MAX-1-i; c.style.transform=`rotate(${-d*2.8}deg) translate(${-d*7}px,${d*7}px) scale(${1-d*0.018})`; }); });
+  el.addEventListener('click',e=>{ if(e.target.classList.contains('port')||el._dragMoved)return; if(onClick)onClick(); });
+  const node={id,type:'stack',x,y,el}; nodes.push(node);
+  if(connectTo) setTimeout(()=>addEdge(connectTo,id),60);
+  return node;
+}
+
+// ── panel node factory (form / contacts) ──
+function createPanelNode(cls,inner,x,y,kind){
+  const id=++nid; const el=document.createElement('div');
+  el.className='node '+cls; el.dataset.id=id; el.dataset.kind=kind||''; el.style.left=x+'px'; el.style.top=y+'px';
+  el.innerHTML=inner+'<div class="port port-in"></div><div class="port port-out"></div>';
+  world.appendChild(el); wireNode(el,id);
+  const node={id,type:'panel',x,y,el,kind}; nodes.push(node); return node;
+}
+function makeFormNode(x,y){
+  const html=`<div class="pn-head"><span class="pn-tag">node · form</span><span class="pn-title">start a project</span></div>
+  <form class="pn-body">
+    <label class="pn-label">email</label>
+    <input class="pn-input no-drag" type="email" placeholder="you@email.com" required>
+    <label class="pn-label">short idea</label>
+    <textarea class="pn-input no-drag" placeholder="describe your idea…" rows="3" required></textarea>
+    <button class="pn-btn no-drag" type="submit">send →</button>
+  </form>`;
+  const node=createPanelNode('nd-panel',html,x,y,'start');
+  const form=node.el.querySelector('form');
+  form.addEventListener('submit',ev=>{
+    ev.preventDefault();
+    const email=form.querySelector('input').value.trim();
+    const idea=form.querySelector('textarea').value.trim();
+    const subject=encodeURIComponent('Project request'+(email?' — '+email:''));
+    const body=encodeURIComponent(idea+'\n\nReply to: '+email);
+    location.href=`mailto:${CONTACT_EMAIL}?subject=${subject}&body=${body}`;
+    toast('opening your email app…');
+  });
+  return node;
+}
+function makeContactNode(x,y){
+  const rows=CONTACTS.map(c=>`<a class="ct-row no-drag" href="${c.href}" target="_blank" rel="noopener"><span class="ct-label">${c.label}</span><span class="ct-val">${c.val}</span></a>`).join('');
+  const html=`<div class="pn-head"><span class="pn-tag">node · contacts</span><span class="pn-title">contacts</span></div>${rows}`;
+  return createPanelNode('nd-contact',html,x,y,'contacts');
+}
+
+// ── menu → spawn nodes (one per kind, focus if already open) ──
+const kindNodes={};
+function animateIn(el){ el.style.opacity='0'; el.style.transform='scale(.9) translateY(12px)'; el.style.transition='opacity .4s,transform .4s cubic-bezier(.2,.8,.2,1)'; requestAnimationFrame(()=>requestAnimationFrame(()=>{ el.style.opacity='1'; el.style.transform=''; setTimeout(()=>el.style.transition='',450); })); }
+let panAnim=null;
+function animatePan(tx,ty){ cancelAnimationFrame(panAnim); (function step(){ pan.x+=(tx-pan.x)*.18; pan.y+=(ty-pan.y)*.18; applyT(); if(Math.abs(tx-pan.x)>.5||Math.abs(ty-pan.y)>.5) panAnim=requestAnimationFrame(step); })(); }
+function focusNode(node){ const w=node.el.offsetWidth||220, h=node.el.offsetHeight||200; animatePan(window.innerWidth/2-(node.x+w/2)*zoom, window.innerHeight/2-(node.y+h/2)*zoom); }
+function spawnFromMenu(kind){
+  if(kindNodes[kind] && document.body.contains(kindNodes[kind].el)){ focusNode(kindNodes[kind]); pulse(kindNodes[kind].el); return; }
+  const off=Object.keys(kindNodes).length*44;
+  const c=s2w(window.innerWidth/2, window.innerHeight/2);
+  const x=c.x-116+off, y=c.y-110+off;
+  let node;
+  if(kind==='start') node=makeFormNode(x,y);
+  else if(kind==='contacts') node=makeContactNode(x,y);
+  else if(kind==='about') node=createEmptyStack('About me','profile',x,y,null,()=>toast('coming soon'));
+  if(!node)return;
+  kindNodes[kind]=node; animateIn(node.el); focusNode(node);
 }
 
 // ── POPUP ──
@@ -402,16 +540,52 @@ window.addEventListener('mouseup',e=>{
   if(panning){panning=false;canvas.style.cursor='';startPanPhysics();}
 });
 canvas.addEventListener('mousedown',e=>{ const empty=e.target===canvas||e.target===world||e.target.tagName==='path'||e.target===connSvg; if(!empty||wireFrom!==null)return; panning=true; panStart={x:e.clientX,y:e.clientY}; panPrev={x:e.clientX,y:e.clientY}; panOrig={...pan}; panTime=performance.now(); panVel={x:0,y:0}; canvas.style.cursor='grabbing'; });
-canvas.addEventListener('wheel',e=>{ e.preventDefault(); let dy=e.deltaY; if(e.deltaMode===1)dy*=30; if(e.deltaMode===2)dy*=300; dy=Math.max(-80,Math.min(80,dy)); targetZoom=Math.min(Math.max(targetZoom*(1-dy*.004),.12),4); zoomCX=e.clientX; zoomCY=e.clientY; zoomWX=(e.clientX-pan.x)/zoom; zoomWY=(e.clientY-pan.y)/zoom; if(!zoomAnimId)zoomAnimId=requestAnimationFrame(tickZoom); },{passive:false});
+canvas.addEventListener('wheel',e=>{
+  e.preventDefault();
+  if(e.ctrlKey){ // trackpad pinch (or ctrl+wheel) → zoom, keep momentum toward cursor
+    let dy=e.deltaY; if(e.deltaMode===1)dy*=30; if(e.deltaMode===2)dy*=300; dy=Math.max(-80,Math.min(80,dy));
+    targetZoom=Math.min(Math.max(targetZoom*(1-dy*.01),.12),4);
+    zoomCX=e.clientX; zoomCY=e.clientY; zoomWX=(e.clientX-pan.x)/zoom; zoomWY=(e.clientY-pan.y)/zoom;
+    if(!zoomAnimId)zoomAnimId=requestAnimationFrame(tickZoom);
+  } else { // two-finger drag → pan
+    let dx=e.deltaX, dy=e.deltaY;
+    if(e.deltaMode===1){dx*=30;dy*=30;} if(e.deltaMode===2){dx*=300;dy*=300;}
+    pan.x-=dx; pan.y-=dy; applyT();
+  }
+},{passive:false});
+
+// ── double-click context menu ──
+const cmenu=document.getElementById('cmenu'); let menuOpen=false;
+function openMenu(x,y){
+  cmenu.style.display='block';
+  const w=cmenu.offsetWidth, h=cmenu.offsetHeight;
+  cmenu.style.left=Math.max(12,Math.min(x,window.innerWidth-w-12))+'px';
+  cmenu.style.top =Math.max(12,Math.min(y,window.innerHeight-h-12))+'px';
+  requestAnimationFrame(()=>cmenu.classList.add('open'));
+  menuOpen=true;
+  const inp=document.getElementById('cm-input'); inp.value=''; filterMenu('');
+  setTimeout(()=>inp.focus(),40);
+}
+function closeMenu(){ if(!menuOpen)return; menuOpen=false; cmenu.classList.remove('open'); setTimeout(()=>{ if(!menuOpen)cmenu.style.display='none'; },180); }
+function filterMenu(q){ q=q.toLowerCase().trim(); document.querySelectorAll('#cm-list .cm-item').forEach(it=>{ it.classList.toggle('hidden', q && !it.textContent.toLowerCase().includes(q)); }); }
+document.getElementById('cm-input').addEventListener('input',e=>filterMenu(e.target.value));
+document.getElementById('cm-list').addEventListener('click',e=>{ const it=e.target.closest('.cm-item'); if(!it)return; const act=it.dataset.act; closeMenu(); if(act==='restart'){location.reload();return;} spawnFromMenu(act); });
+document.addEventListener('mousedown',e=>{ if(menuOpen && !cmenu.contains(e.target)) closeMenu(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&menuOpen)closeMenu(); });
+canvas.addEventListener('dblclick',e=>{ const empty=e.target===canvas||e.target===world||e.target===connSvg||e.target.tagName==='path'; if(!empty)return; openMenu(e.clientX,e.clientY); });
 
 function updateTime(){const d=new Date();document.getElementById('tb-time').textContent=`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')} GMT`;}
 updateTime(); setInterval(updateTime,10000);
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800);}
 
 const CX=window.innerWidth/2, CY=window.innerHeight/2;
-zoom=targetZoom=0.9; pan.x=CX-110*zoom; pan.y=CY-90*zoom; applyT();
-createHub(0,0);
-setTimeout(()=>toast('click the node to reveal projects'),900);
+zoom=targetZoom=0.85;
+const hub=createHub(0,0);
+spawnProject(0,hub.id);
+spawnProject(1,hub.id);
+createEmptyStack('AI Photos Direction','photo direction', hub.x+340, hub.y+330, hub.id, ()=>toast('coming soon'));
+pan.x=CX-320*zoom; pan.y=CY-170*zoom; applyT();
+setTimeout(()=>toast('double-click anywhere for the menu'),900);
 </script>
 </body>
 </html>
