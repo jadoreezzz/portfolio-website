@@ -291,10 +291,11 @@ function renderEdges(){
   }
 }
 
-function createHub(x,y){
+function createHub(x,y,opts={}){
+  const {title='AI &amp; Social<br>Media', sub='content direction', hint='root node', badge='live', portIn=false}=opts;
   const id=++nid; const el=document.createElement('div');
   el.className='node nd-hub'; el.dataset.id=id; el.style.left=x+'px'; el.style.top=y+'px';
-  el.innerHTML=`<div class="hub-head"><span class="hub-tag">node · category</span></div><div class="hub-title">AI &amp; Social<br>Media</div><div class="hub-sub">content direction</div><div class="hub-foot"><span class="hub-hint">root node</span><span class="hub-counter full">live</span></div><div class="port port-out"></div>`;
+  el.innerHTML=`<div class="hub-head"><span class="hub-tag">node · category</span></div><div class="hub-title">${title}</div><div class="hub-sub">${sub}</div><div class="hub-foot"><span class="hub-hint">${hint}</span><span class="hub-counter full">${badge}</span></div>${portIn?'<div class="port port-in"></div>':''}<div class="port port-out"></div>`;
   world.appendChild(el);
   el.addEventListener('mousedown',e=>{if(e.target.classList.contains('port'))return;e.stopPropagation();el._dragMoved=false;el._dragSX=e.clientX;el._dragSY=e.clientY;startDragNode(e,id);});
   el.querySelector('.port-out').addEventListener('mousedown',e=>{e.preventDefault();e.stopPropagation();startWire(e,id);});
@@ -583,8 +584,9 @@ zoom=targetZoom=0.85;
 const hub=createHub(0,0);
 spawnProject(0,hub.id);
 spawnProject(1,hub.id);
-createEmptyStack('AI Photos Direction','photo direction', hub.x+340, hub.y+330, hub.id, ()=>toast('coming soon'));
-pan.x=CX-320*zoom; pan.y=CY-170*zoom; applyT();
+const photoHub=createHub(hub.x+10, hub.y+310, {title:'AI Photo<br>Direction', sub:'photo direction', hint:'category', badge:'soon', portIn:true});
+setTimeout(()=>addEdge(hub.id,photoHub.id),60);
+pan.x=CX-300*zoom; pan.y=CY-230*zoom; applyT();
 setTimeout(()=>toast('double-click anywhere for the menu'),900);
 </script>
 </body>
