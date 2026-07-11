@@ -106,6 +106,8 @@ body.popup-open #squeeze { opacity:1; pointer-events:all; }
 .node { position:absolute; border-radius:14px; background:var(--card); border:1px solid var(--border); cursor:grab; will-change:transform; transition:border-color .2s, box-shadow .2s; }
 .node:hover { border-color:#2a2a2a; box-shadow:0 16px 48px rgba(0,0,0,.7); }
 .node.dragging { cursor:grabbing; box-shadow:0 28px 72px rgba(0,0,0,.9); z-index:500; }
+.node.selected { border-color:#ffffff; box-shadow:0 0 0 1.5px #ffffff, 0 18px 50px rgba(0,0,0,.7); }
+.node.selected:hover { border-color:#ffffff; box-shadow:0 0 0 1.5px #ffffff, 0 22px 60px rgba(0,0,0,.85); }
 .port { position:absolute; width:11px; height:11px; border-radius:50%; background:#131313; border:1.5px solid #272727; cursor:crosshair; z-index:10; transition:border-color .15s, transform .15s; }
 .port-out { right:-5px; top:50%; transform:translateY(-50%); }
 .port-in  { left:-5px;  top:50%; transform:translateY(-50%); }
@@ -125,8 +127,8 @@ body.popup-open #squeeze { opacity:1; pointer-events:all; }
 @keyframes pulseRing { from{opacity:1;transform:scale(1)} to{opacity:0;transform:scale(1.07)} }
 
 /* stack */
-.nd-stack { cursor:pointer; width:180px; }
-.stack-wrap { position:relative; width:180px; height:240px; pointer-events:none; }
+.nd-stack { cursor:pointer; width:248px; }
+.stack-wrap { position:relative; width:248px; height:330px; pointer-events:none; }
 .stack-card { position:absolute; inset:0; border-radius:13px; background:#0d0d0d; border:1px solid #1c1c1c; overflow:hidden; transform-origin:bottom center; transition:transform .35s cubic-bezier(.2,.8,.2,1); backface-visibility:hidden; }
 .stack-card video { width:100%; height:100%; object-fit:cover; display:block; }
 .nd-stack:hover .stack-card { transition:transform .3s cubic-bezier(.2,.8,.2,1); }
@@ -229,10 +231,6 @@ body.popup-open #squeeze { opacity:1; pointer-events:all; }
 
 <!-- double-click context menu -->
 <div id="cmenu">
-  <div class="cm-search">
-    <div class="cm-box"><span class="cm-ic">⌕</span><input id="cm-input" type="text" placeholder="Search" autocomplete="off" spellcheck="false"></div>
-    <div class="cm-filter">≡</div>
-  </div>
   <div class="cm-list" id="cm-list">
     <div class="cm-item" data-act="start">Start project with me</div>
     <div class="cm-item" data-act="contacts">Contacts</div>
@@ -247,9 +245,9 @@ body.popup-open #squeeze { opacity:1; pointer-events:all; }
 function vp(p){ return p.split('/').map(encodeURIComponent).join('/'); }
 
 const PROJECTS = [
-  { id:'dibrain', name:'Dibrain Studio', tag:'AI · Social Media · 2024', desc:'Content direction and AI-generated visual identity for Dibrain Studio creative brand.', spawnDX:340, spawnDY:-80,
+  { id:'dibrain', name:'Dibrain Studio', tag:'AI · Social Media · 2024', desc:'Content direction and AI-generated visual identity for Dibrain Studio creative brand.', spawnDX:430, spawnDY:-190,
     videos:['videos/dibrain/01.mp4','videos/dibrain/02.mp4','videos/dibrain/03.mp4','videos/dibrain/04.mp4','videos/dibrain/05.mp4','videos/dibrain/06.mp4','videos/dibrain/07.mp4','videos/dibrain/08.mp4'].map(vp) },
-  { id:'huggito', name:'Huggito', tag:'AI · Content · 2024', desc:'AI-driven content strategy and generative visuals for Huggito social presence.', spawnDX:340, spawnDY:120,
+  { id:'huggito', name:'Huggito', tag:'AI · Content · 2024', desc:'AI-driven content strategy and generative visuals for Huggito social presence.', spawnDX:430, spawnDY:230,
     videos:['videos/huggito/01.mp4','videos/huggito/02.mp4','videos/huggito/03.mp4','videos/huggito/04.mp4','videos/huggito/05.mp4','videos/huggito/06.mp4','videos/huggito/07.mp4','videos/huggito/08.mp4'].map(vp) }
 ];
 
@@ -262,7 +260,7 @@ const CONTACTS = [
 ];
 
 // ── photo project under "AI Photo Direction" ──
-const FIZULI = { id:'fizuli', name:'FIZULI', tag:'Clothing Brand · Photo', desc:'Photo direction and art direction for FIZULI clothing brand editorial campaign.', spawnDX:360, spawnDY:70,
+const FIZULI = { id:'fizuli', name:'FIZULI', tag:'Clothing Brand · Photo', desc:'Photo direction and art direction for FIZULI clothing brand editorial campaign.', spawnDX:430, spawnDY:-60,
   images:['photos/fizuli/01.jpg','photos/fizuli/02.jpg'].map(vp) };
 
 const world=document.getElementById('world'), connSvg=document.getElementById('conn'), canvas=document.getElementById('canvas'), gridEl=document.getElementById('grid');
@@ -420,7 +418,7 @@ function spawnFromMenu(kind){
   else if(kind==='contacts') node=makeContactNode(x,y);
   else if(kind==='about') node=createEmptyStack('About me','profile',x,y,null,()=>toast('coming soon'));
   if(!node)return;
-  kindNodes[kind]=node; animateIn(node.el); focusNode(node);
+  kindNodes[kind]=node; animateIn(node.el); focusNode(node); selectNode(node);
 }
 
 // ── POPUP ──
@@ -505,10 +503,38 @@ document.getElementById('popup-close').addEventListener('click',closePopup);
 document.getElementById('squeeze').addEventListener('click',closePopup);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&popupOpen)closePopup();});
 
+// ── SELECTION / DELETE / UNDO ──
+let selectedNode=null, undoStack=[];
+function selectNode(node){ if(selectedNode&&selectedNode!==node)selectedNode.el.classList.remove('selected'); selectedNode=node; if(node)node.el.classList.add('selected'); }
+function deselect(){ if(selectedNode){selectedNode.el.classList.remove('selected'); selectedNode=null;} }
+function deleteNode(node){
+  const rel=edges.filter(e=>e.from===node.id||e.to===node.id);
+  edges=edges.filter(e=>e.from!==node.id&&e.to!==node.id);
+  const idx=nodes.indexOf(node); if(idx>=0)nodes.splice(idx,1);
+  node.el.classList.remove('selected'); node.el.remove();
+  undoStack.push({node,edges:rel,idx});
+  if(selectedNode===node)selectedNode=null;
+  renderEdges();
+}
+function undoDelete(){
+  const last=undoStack.pop(); if(!last)return;
+  world.appendChild(last.node.el);
+  nodes.splice(Math.min(last.idx,nodes.length),0,last.node);
+  last.edges.forEach(e=>{ if(!edges.find(x=>x.from===e.from&&x.to===e.to))edges.push(e); });
+  renderEdges(); selectNode(last.node);
+}
+document.addEventListener('keydown',e=>{
+  const typing=/^(input|textarea)$/i.test(document.activeElement?.tagName||'');
+  if(typing||popupOpen||menuOpen)return;
+  if((e.key==='Delete'||e.key==='Backspace')&&selectedNode){ e.preventDefault(); deleteNode(selectedNode); }
+  else if((e.metaKey||e.ctrlKey)&&(e.key==='z'||e.key==='Z')){ e.preventDefault(); undoDelete(); }
+});
+
 // ── DRAG ──
 function startDragNode(e,id){
   if(dragNode){dragNode.el.classList.remove('dragging');dragNode._released=false;cancelAnimationFrame(dragAnimId);dragAnimId=null;}
   dragNode=nodes.find(n=>n.id===id); if(!dragNode)return;
+  selectNode(dragNode);
   const w=s2w(e.clientX,e.clientY);
   dragNode._offX=w.x-dragNode.x; dragNode._offY=w.y-dragNode.y; dragNode._released=false;
   dragCurrent={x:dragNode.x,y:dragNode.y}; lastDT={x:dragNode.x,y:dragNode.y}; lastDTime=performance.now(); nodeVel={x:0,y:0};
@@ -554,7 +580,7 @@ window.addEventListener('mouseup',e=>{
   endWire(e.clientX,e.clientY);
   if(panning){panning=false;canvas.style.cursor='';startPanPhysics();}
 });
-canvas.addEventListener('mousedown',e=>{ const empty=e.target===canvas||e.target===world||e.target.tagName==='path'||e.target===connSvg; if(!empty||wireFrom!==null)return; panning=true; panStart={x:e.clientX,y:e.clientY}; panPrev={x:e.clientX,y:e.clientY}; panOrig={...pan}; panTime=performance.now(); panVel={x:0,y:0}; canvas.style.cursor='grabbing'; });
+canvas.addEventListener('mousedown',e=>{ const empty=e.target===canvas||e.target===world||e.target.tagName==='path'||e.target===connSvg; if(!empty||wireFrom!==null)return; deselect(); panning=true; panStart={x:e.clientX,y:e.clientY}; panPrev={x:e.clientX,y:e.clientY}; panOrig={...pan}; panTime=performance.now(); panVel={x:0,y:0}; canvas.style.cursor='grabbing'; });
 canvas.addEventListener('wheel',e=>{
   e.preventDefault();
   if(e.ctrlKey){ // trackpad pinch (or ctrl+wheel) → zoom, keep momentum toward cursor
@@ -578,12 +604,8 @@ function openMenu(x,y){
   cmenu.style.top =Math.max(12,Math.min(y,window.innerHeight-h-12))+'px';
   requestAnimationFrame(()=>cmenu.classList.add('open'));
   menuOpen=true;
-  const inp=document.getElementById('cm-input'); inp.value=''; filterMenu('');
-  setTimeout(()=>inp.focus(),40);
 }
 function closeMenu(){ if(!menuOpen)return; menuOpen=false; cmenu.classList.remove('open'); setTimeout(()=>{ if(!menuOpen)cmenu.style.display='none'; },180); }
-function filterMenu(q){ q=q.toLowerCase().trim(); document.querySelectorAll('#cm-list .cm-item').forEach(it=>{ it.classList.toggle('hidden', q && !it.textContent.toLowerCase().includes(q)); }); }
-document.getElementById('cm-input').addEventListener('input',e=>filterMenu(e.target.value));
 document.getElementById('cm-list').addEventListener('click',e=>{ const it=e.target.closest('.cm-item'); if(!it)return; const act=it.dataset.act; closeMenu(); if(act==='restart'){location.reload();return;} spawnFromMenu(act); });
 document.addEventListener('mousedown',e=>{ if(menuOpen && !cmenu.contains(e.target)) closeMenu(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&menuOpen)closeMenu(); });
@@ -598,10 +620,9 @@ zoom=targetZoom=0.78;
 const hub=createHub(0,0);
 spawnProject(PROJECTS[0],hub.id);
 spawnProject(PROJECTS[1],hub.id);
-const photoHub=createHub(hub.x+10, hub.y+320, {title:'AI Photo<br>Direction', sub:'photo direction', hint:'category', badge:'live', portIn:true});
-setTimeout(()=>addEdge(hub.id,photoHub.id),60);
+const photoHub=createHub(hub.x, hub.y+720, {title:'AI Photo<br>Direction', sub:'photo direction', hint:'category', badge:'live'});
 spawnProject(FIZULI,photoHub.id);
-pan.x=CX-320*zoom; pan.y=CY-250*zoom; applyT();
+pan.x=CX-(110+430/2)*zoom; pan.y=CY-150*zoom; applyT();
 setTimeout(()=>toast('double-click anywhere for the menu'),900);
 </script>
 </body>
