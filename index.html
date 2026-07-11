@@ -82,7 +82,9 @@ body.popup-open #squeeze { opacity:1; pointer-events:all; }
   scroll-snap-align:center; position:relative;
   cursor:default;
 }
-.pv-item video { width:100%; height:100%; object-fit:cover; display:block; }
+.pv-item video, .pv-item img { width:100%; height:100%; object-fit:cover; display:block; }
+.pv-item.photo { width:min(80vw,680px); aspect-ratio:auto; height:auto; border-radius:14px; background:#0a0a0a; }
+.pv-item.photo img { height:auto; object-fit:contain; }
 .pv-item .pv-num { position:absolute; bottom:10px; left:12px; font-size:8px; color:rgba(255,255,255,.25); letter-spacing:.06em; }
 
 /* right: thumbnail strip */
@@ -98,7 +100,7 @@ body.popup-open #squeeze { opacity:1; pointer-events:all; }
 .po-thumb { width:48px; flex-shrink:0; aspect-ratio:9/16; border-radius:7px; overflow:hidden; background:#0d0d0d; border:1px solid #1a1a1a; cursor:pointer; opacity:.3; transition:opacity .2s, border-color .2s, transform .2s; }
 .po-thumb:hover  { opacity:.6; transform:scale(1.06); }
 .po-thumb.active { opacity:1; border-color:#3a3a3a; }
-.po-thumb video  { width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
+.po-thumb video, .po-thumb img { width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
 
 /* ═══ NODES ═══ */
 .node { position:absolute; border-radius:14px; background:var(--card); border:1px solid var(--border); cursor:grab; will-change:transform; transition:border-color .2s, box-shadow .2s; }
@@ -259,6 +261,10 @@ const CONTACTS = [
   { label:'Instagram', val:'@jadoree',               href:'https://instagram.com/jadoree' }
 ];
 
+// ── photo project under "AI Photo Direction" ──
+const FIZULI = { id:'fizuli', name:'FIZULI', tag:'Clothing Brand · Photo', desc:'Photo direction and art direction for FIZULI clothing brand editorial campaign.', spawnDX:360, spawnDY:70,
+  images:['photos/fizuli/01.jpg','photos/fizuli/02.jpg'].map(vp) };
+
 const world=document.getElementById('world'), connSvg=document.getElementById('conn'), canvas=document.getElementById('canvas'), gridEl=document.getElementById('grid');
 let pan={x:0,y:0}, zoom=1, nid=0, nodes=[], edges=[];
 const PAN_FRICTION=.88, DRAG_LERP=.18, NODE_FRICTION=.82, ZOOM_SMOOTH=.13;
@@ -305,19 +311,23 @@ function createHub(x,y,opts={}){
 
 function pulse(el){ el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse'); }
 
-function spawnProject(idx,fromId){
-  const proj=PROJECTS[idx]; const hub=nodes.find(n=>n.id===fromId);
+function spawnProject(proj,fromId){
+  const hub=nodes.find(n=>n.id===fromId);
   const bx=(hub?hub.x:0)+proj.spawnDX, by=(hub?hub.y:0)+proj.spawnDY;
+  const media=proj.videos||proj.images||[]; const isVideo=!!proj.videos;
   const id=++nid; const el=document.createElement('div');
   el.className='node nd-stack'; el.dataset.id=id; el.style.left=bx+'px'; el.style.top=by+'px';
-  const MAX=Math.min(proj.videos.length,6);
+  const MAX=Math.min(media.length,6);
   let html='<div class="stack-wrap">';
   for(let i=0;i<MAX;i++){
     const d=MAX-1-i, r=-d*2.8, tx=-d*7, ty=d*7, sc=1-d*0.018;
-    html+=`<div class="stack-card" style="z-index:${i};transform:rotate(${r}deg) translate(${tx}px,${ty}px) scale(${sc})"><video src="${proj.videos[d]}" muted playsinline preload="auto" data-depth="${d}"></video></div>`;
+    const card = isVideo
+      ? `<video src="${media[d]}" muted playsinline preload="auto" data-depth="${d}"></video>`
+      : `<img src="${media[d]}" alt="" data-depth="${d}">`;
+    html+=`<div class="stack-card" style="z-index:${i};transform:rotate(${r}deg) translate(${tx}px,${ty}px) scale(${sc})">${card}</div>`;
   }
   html+='</div>';
-  el.innerHTML=html+`<div class="stack-foot"><div><div class="stack-name">${proj.name}</div><div class="stack-meta">${proj.videos.length} pieces</div></div><div class="stack-open">open →</div></div><div class="port port-in"></div><div class="port port-out"></div>`;
+  el.innerHTML=html+`<div class="stack-foot"><div><div class="stack-name">${proj.name}</div><div class="stack-meta">${media.length} pieces</div></div><div class="stack-open">open →</div></div><div class="port port-in"></div><div class="port port-out"></div>`;
   world.appendChild(el);
   el.querySelectorAll('video').forEach(v=>{ v.addEventListener('loadeddata',()=>{v.currentTime=0.5;},{once:true}); });
   el.addEventListener('mouseenter',()=>{ el.querySelectorAll('.stack-card').forEach((c,i)=>{ const d=MAX-1-i; c.style.transform=`rotate(${-d*3.5}deg) translate(${-d*10}px,${d*5}px) scale(${1-d*0.018})`; }); });
@@ -420,10 +430,11 @@ let popupOpen=false, currentProj=null, popupIO=null;
 function openPopup(proj){
   if(popupOpen)return;
   popupOpen=true; currentProj=proj;
+  const media=proj.videos||proj.images||[]; const isVideo=!!proj.videos;
   document.getElementById('pi-tag').textContent=proj.tag;
   document.getElementById('pi-name').textContent=proj.name;
   document.getElementById('pi-desc').textContent=proj.desc;
-  document.getElementById('pi-count').textContent=`${proj.videos.length} videos`;
+  document.getElementById('pi-count').textContent=`${media.length} ${isVideo?'videos':'photos'}`;
 
   // build scroll items
   poScroller.innerHTML='';
@@ -436,21 +447,24 @@ function openPopup(proj){
     });
   },{root:poScroller, threshold:0.4});
 
-  proj.videos.forEach((src,i)=>{
-    const item=document.createElement('div'); item.className='pv-item';
-    const v=document.createElement('video'); v.src=src; v.muted=true; v.playsInline=true; v.preload='auto'; v.loop=true;
+  media.forEach((src,i)=>{
+    const item=document.createElement('div'); item.className='pv-item'+(isVideo?'':' photo');
+    let m;
+    if(isVideo){ m=document.createElement('video'); m.src=src; m.muted=true; m.playsInline=true; m.preload='auto'; m.loop=true; }
+    else { m=document.createElement('img'); m.src=src; m.alt=''; }
     const num=document.createElement('div'); num.className='pv-num'; num.textContent=String(i+1).padStart(2,'0');
-    item.append(v,num); poScroller.appendChild(item);
+    item.append(m,num); poScroller.appendChild(item);
     popupIO.observe(item);
   });
   poScroller.scrollTop=0;
 
   // build thumb strip
   poRight.innerHTML='';
-  proj.videos.forEach((src,i)=>{
+  media.forEach((src,i)=>{
     const thumb=document.createElement('div'); thumb.className='po-thumb'+(i===0?' active':'');
-    const v=document.createElement('video'); v.src=src; v.muted=true; v.playsInline=true; v.preload='auto';
-    v.addEventListener('loadeddata',()=>{v.currentTime=0.5;},{once:true}); v.load();
+    let v;
+    if(isVideo){ v=document.createElement('video'); v.src=src; v.muted=true; v.playsInline=true; v.preload='auto'; v.addEventListener('loadeddata',()=>{v.currentTime=0.5;},{once:true}); v.load(); }
+    else { v=document.createElement('img'); v.src=src; v.alt=''; }
     thumb.appendChild(v);
     thumb.addEventListener('click',()=>{
       const items=[...poScroller.querySelectorAll('.pv-item')];
@@ -580,13 +594,14 @@ updateTime(); setInterval(updateTime,10000);
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800);}
 
 const CX=window.innerWidth/2, CY=window.innerHeight/2;
-zoom=targetZoom=0.85;
+zoom=targetZoom=0.78;
 const hub=createHub(0,0);
-spawnProject(0,hub.id);
-spawnProject(1,hub.id);
-const photoHub=createHub(hub.x+10, hub.y+310, {title:'AI Photo<br>Direction', sub:'photo direction', hint:'category', badge:'soon', portIn:true});
+spawnProject(PROJECTS[0],hub.id);
+spawnProject(PROJECTS[1],hub.id);
+const photoHub=createHub(hub.x+10, hub.y+320, {title:'AI Photo<br>Direction', sub:'photo direction', hint:'category', badge:'live', portIn:true});
 setTimeout(()=>addEdge(hub.id,photoHub.id),60);
-pan.x=CX-300*zoom; pan.y=CY-230*zoom; applyT();
+spawnProject(FIZULI,photoHub.id);
+pan.x=CX-320*zoom; pan.y=CY-250*zoom; applyT();
 setTimeout(()=>toast('double-click anywhere for the menu'),900);
 </script>
 </body>
