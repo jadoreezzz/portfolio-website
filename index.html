@@ -90,7 +90,7 @@ body.popup-open #squeeze { opacity:1; pointer-events:all; }
 
 /* ═══ loupe — liquid-glass magnifier ═══ */
 #loupe {
-  position:fixed; z-index:11000; width:200px; height:200px; border-radius:50%;
+  position:fixed; z-index:11000; width:300px; height:300px; border-radius:50%;
   pointer-events:none; display:none; opacity:0;
   background-repeat:no-repeat; background-color:#0a0a0a;
   transition:opacity .18s ease, width .18s ease, height .18s ease;
@@ -452,7 +452,7 @@ function spawnFromMenu(kind){
 
 // ── LOUPE (liquid-glass magnifier, originals lazy-loaded) ──
 const loupeEl=document.createElement('div'); loupeEl.id='loupe'; document.body.appendChild(loupeEl);
-const LOUPE_R=100, LOUPE_ZOOM=2;
+const LOUPE_R=150, LOUPE_ZOOM=3.5;
 const fullCache={};
 function ensureFull(src){ if(fullCache[src])return fullCache[src]; const rec={loaded:false}; const img=new Image(); rec.img=img; img.onload=()=>rec.loaded=true; img.src=src; fullCache[src]=rec; return rec; }
 function attachLoupe(item){
