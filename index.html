@@ -88,40 +88,39 @@ body.popup-open #squeeze { opacity:1; pointer-events:all; }
 .pv-item .pv-num { position:absolute; bottom:10px; left:12px; font-size:8px; color:rgba(255,255,255,.25); letter-spacing:.06em; }
 .pv-item.photo { cursor:none; }
 .pv-item.photo img { transition:filter .38s ease; }
-.pv-item.photo.loupe-active img { filter:blur(11px) saturate(1.06) brightness(.95); }
+.pv-item.photo.loupe-active img { filter:blur(12px) brightness(.97); }
 
-/* ═══ loupe — glass lens: sharp focus + chromatic aberration ═══ */
+/* ── warp ring: liquid "pull" of the blurred surroundings, only OUTSIDE the lens ── */
+#loupe-warp {
+  position:fixed; z-index:10990; border-radius:50%; pointer-events:none;
+  display:none; opacity:0; background-repeat:no-repeat;
+  transition:opacity .22s ease;
+}
+#loupe-warp.show { display:block; opacity:1; }
+
+/* ── lens: clean, sharp magnifier — no distortion inside ── */
 #loupe {
   position:fixed; z-index:11000; width:300px; height:300px; border-radius:50%;
   pointer-events:none; display:none; opacity:0; overflow:hidden; background:#000;
-  --cax:5px;
   transition:opacity .2s ease;
-  box-shadow:0 24px 64px rgba(0,0,0,.6), 0 6px 18px rgba(0,0,0,.45);
+  box-shadow:0 24px 64px rgba(0,0,0,.5), 0 6px 18px rgba(0,0,0,.38);
 }
 #loupe.show { display:block; opacity:1; }
-#loupe .ch {                /* one per RGB channel → chromatic aberration when offset */
+#loupe .lens {
   position:absolute; inset:0; border-radius:50%;
   background-image:var(--img); background-repeat:no-repeat;
   background-size:var(--bs); background-position:var(--bp);
-  background-blend-mode:multiply; mix-blend-mode:screen;
 }
-#loupe .ch.r { background-color:#ff0000; transform:translate(var(--cax),0); }
-#loupe .ch.g { background-color:#00ff00; }
-#loupe .ch.b { background-color:#0000ff; transform:translate(calc(-1 * var(--cax)),0); }
-#loupe .lg {                /* specular sheen (liquid glass) */
+#loupe .lg {                /* thin specular sheen — subtle glass */
   position:absolute; inset:0; border-radius:50%; pointer-events:none;
   background:
-    radial-gradient(120% 90% at 30% 15%, rgba(255,255,255,.5) 0%, rgba(255,255,255,0) 42%),
-    radial-gradient(85% 75% at 72% 90%, rgba(255,255,255,.14) 0%, rgba(255,255,255,0) 55%);
+    radial-gradient(120% 90% at 30% 14%, rgba(255,255,255,.34) 0%, rgba(255,255,255,0) 40%),
+    radial-gradient(85% 75% at 72% 92%, rgba(255,255,255,.08) 0%, rgba(255,255,255,0) 55%);
   mix-blend-mode:screen;
 }
-#loupe::after {             /* chromatic refraction rim */
+#loupe::after {             /* faint rim highlight */
   content:''; position:absolute; inset:0; border-radius:50%; pointer-events:none;
-  box-shadow:
-    inset 0 0 0 2px rgba(120,200,255,.55),
-    inset 0 0 0 5px rgba(255,110,30,.3),
-    inset 0 0 26px 7px rgba(255,255,255,.15);
-  mix-blend-mode:screen;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.28), inset 0 0 20px 5px rgba(255,255,255,.08);
 }
 
 /* right: thumbnail strip */
@@ -277,6 +276,14 @@ body.popup-open #squeeze { opacity:1; pointer-events:all; }
 </div>
 
 <div id="toast"></div>
+
+<!-- liquid displacement filter for the loupe's outer warp ring -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <filter id="liquid" x="-40%" y="-40%" width="180%" height="180%" color-interpolation-filters="sRGB">
+    <feImage id="liquidMap" result="map" preserveAspectRatio="none"/>
+    <feDisplacementMap in="SourceGraphic" in2="map" scale="58" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</defs></svg>
 
 <script>
 function vp(p){ return p.split('/').map(encodeURIComponent).join('/'); }
@@ -460,10 +467,37 @@ function spawnFromMenu(kind){
 }
 
 // ── LOUPE (liquid-glass magnifier, originals lazy-loaded) ──
+const LOUPE_R=150, LOUPE_ZOOM=3.5, WARP_BAND=78, WARP_R=LOUPE_R+WARP_BAND;
+// clean sharp lens
 const loupeEl=document.createElement('div'); loupeEl.id='loupe';
-loupeEl.innerHTML='<div class="ch r"></div><div class="ch g"></div><div class="ch b"></div><div class="lg"></div>';
+loupeEl.innerHTML='<div class="lens"></div><div class="lg"></div>';
 document.body.appendChild(loupeEl);
-const LOUPE_R=150, LOUPE_ZOOM=3.5;
+// outer warp ring — distorts the blurred surroundings just outside the lens
+const warpEl=document.createElement('div'); warpEl.id='loupe-warp';
+warpEl.style.width=warpEl.style.height=(WARP_R*2)+'px';
+warpEl.style.filter='blur(12px) url(#liquid)';
+const maskCss=`radial-gradient(circle at center, transparent 0, transparent ${LOUPE_R-10}px, #000 ${LOUPE_R+2}px, #000 ${LOUPE_R+52}px, transparent ${WARP_R}px)`;
+warpEl.style.webkitMaskImage=warpEl.style.maskImage=maskCss;
+document.body.appendChild(warpEl);
+
+// build radial displacement map: inward "pull" concentrated in a band at the lens edge, zero elsewhere
+(function initLiquidMap(){
+  const S=WARP_R*2, c=document.createElement('canvas'); c.width=c.height=S; const ctx=c.getContext('2d');
+  const im=ctx.createImageData(S,S), d=im.data, R=S/2, edge=LOUPE_R/WARP_R;
+  for(let y=0;y<S;y++){ for(let x=0;x<S;x++){
+    const dx=(x-R)/R, dy=(y-R)/R, r=Math.hypot(dx,dy);
+    const ux=r>1e-4?dx/r:0, uy=r>1e-4?dy/r:0;
+    const p=Math.exp(-Math.pow((r-edge)/0.15,2));   // bump at the lens boundary
+    const vx=-ux*p, vy=-uy*p;                        // pull inward
+    const i=(y*S+x)*4;
+    d[i]=Math.round(128+vx*127); d[i+1]=Math.round(128+vy*127); d[i+2]=128; d[i+3]=255;
+  }}
+  ctx.putImageData(im,0,0);
+  const m=document.getElementById('liquidMap');
+  m.setAttribute('href',c.toDataURL()); m.setAttribute('x','0'); m.setAttribute('y','0');
+  m.setAttribute('width',S); m.setAttribute('height',S);
+})();
+
 const fullCache={};
 function ensureFull(src){ if(fullCache[src])return fullCache[src]; const rec={loaded:false}; const img=new Image(); rec.img=img; img.onload=()=>rec.loaded=true; img.src=src; fullCache[src]=rec; return rec; }
 function attachLoupe(item){
@@ -473,19 +507,26 @@ function attachLoupe(item){
   item.addEventListener('mousemove',ev=>{
     const rect=img.getBoundingClientRect();
     const x=ev.clientX-rect.left, y=ev.clientY-rect.top;
-    if(x<0||y<0||x>rect.width||y>rect.height){ loupeEl.classList.remove('show'); return; }
+    if(x<0||y<0||x>rect.width||y>rect.height){ loupeEl.classList.remove('show'); warpEl.classList.remove('show'); return; }
+    const cx=ev.clientX, cy=ev.clientY;
     const rec=ensureFull(full);
     const bg=rec.loaded?full:img.getAttribute('src');
+    // clean sharp lens (center) — no distortion
     loupeEl.style.setProperty('--img',`url("${bg}")`);
     loupeEl.style.setProperty('--bs',`${rect.width*LOUPE_ZOOM}px ${rect.height*LOUPE_ZOOM}px`);
     loupeEl.style.setProperty('--bp',`${LOUPE_R-x*LOUPE_ZOOM}px ${LOUPE_R-y*LOUPE_ZOOM}px`);
-    loupeEl.style.left=(ev.clientX-LOUPE_R)+'px';
-    loupeEl.style.top=(ev.clientY-LOUPE_R)+'px';
+    loupeEl.style.left=(cx-LOUPE_R)+'px'; loupeEl.style.top=(cy-LOUPE_R)+'px';
     loupeEl.classList.add('show');
+    // outer warp ring — same blurred photo, aligned to screen, displaced at the edge
+    warpEl.style.left=(cx-WARP_R)+'px'; warpEl.style.top=(cy-WARP_R)+'px';
+    warpEl.style.backgroundImage=`url("${img.getAttribute('src')}")`;
+    warpEl.style.backgroundSize=`${rect.width}px ${rect.height}px`;
+    warpEl.style.backgroundPosition=`${rect.left-(cx-WARP_R)}px ${rect.top-(cy-WARP_R)}px`;
+    warpEl.classList.add('show');
   });
-  item.addEventListener('mouseleave',()=>{ loupeEl.classList.remove('show'); item.classList.remove('loupe-active'); });
+  item.addEventListener('mouseleave',()=>{ loupeEl.classList.remove('show'); warpEl.classList.remove('show'); item.classList.remove('loupe-active'); });
 }
-function hideLoupe(){ loupeEl.classList.remove('show'); document.querySelectorAll('.pv-item.photo.loupe-active').forEach(i=>i.classList.remove('loupe-active')); }
+function hideLoupe(){ loupeEl.classList.remove('show'); warpEl.classList.remove('show'); document.querySelectorAll('.pv-item.photo.loupe-active').forEach(i=>i.classList.remove('loupe-active')); }
 
 // ── POPUP ──
 const popupEl=document.getElementById('popup'), poScroller=document.getElementById('po-scroller'), poRight=document.getElementById('po-right');
