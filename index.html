@@ -87,32 +87,41 @@ body.popup-open #squeeze { opacity:1; pointer-events:all; }
 .pv-item.photo img { height:auto; object-fit:contain; }
 .pv-item .pv-num { position:absolute; bottom:10px; left:12px; font-size:8px; color:rgba(255,255,255,.25); letter-spacing:.06em; }
 .pv-item.photo { cursor:none; }
+.pv-item.photo img { transition:filter .38s ease; }
+.pv-item.photo.loupe-active img { filter:blur(11px) saturate(1.06) brightness(.95); }
 
-/* ═══ loupe — liquid-glass magnifier ═══ */
+/* ═══ loupe — glass lens: sharp focus + chromatic aberration ═══ */
 #loupe {
   position:fixed; z-index:11000; width:300px; height:300px; border-radius:50%;
-  pointer-events:none; display:none; opacity:0;
-  background-repeat:no-repeat; background-color:#0a0a0a;
-  transition:opacity .18s ease, width .18s ease, height .18s ease;
-  box-shadow:
-    0 12px 44px rgba(0,0,0,.5),
-    0 2px 10px rgba(0,0,0,.35),
-    inset 0 0 0 1px rgba(255,255,255,.4),
-    inset 0 4px 12px rgba(255,255,255,.35),
-    inset 0 -12px 24px rgba(0,0,0,.3);
+  pointer-events:none; display:none; opacity:0; overflow:hidden; background:#000;
+  --cax:5px;
+  transition:opacity .2s ease;
+  box-shadow:0 24px 64px rgba(0,0,0,.6), 0 6px 18px rgba(0,0,0,.45);
 }
 #loupe.show { display:block; opacity:1; }
-#loupe::before {           /* specular sheen */
-  content:''; position:absolute; inset:0; border-radius:50%; pointer-events:none;
+#loupe .ch {                /* one per RGB channel → chromatic aberration when offset */
+  position:absolute; inset:0; border-radius:50%;
+  background-image:var(--img); background-repeat:no-repeat;
+  background-size:var(--bs); background-position:var(--bp);
+  background-blend-mode:multiply; mix-blend-mode:screen;
+}
+#loupe .ch.r { background-color:#ff0000; transform:translate(var(--cax),0); }
+#loupe .ch.g { background-color:#00ff00; }
+#loupe .ch.b { background-color:#0000ff; transform:translate(calc(-1 * var(--cax)),0); }
+#loupe .lg {                /* specular sheen (liquid glass) */
+  position:absolute; inset:0; border-radius:50%; pointer-events:none;
   background:
-    radial-gradient(115% 90% at 30% 16%, rgba(255,255,255,.5) 0%, rgba(255,255,255,0) 40%),
+    radial-gradient(120% 90% at 30% 15%, rgba(255,255,255,.5) 0%, rgba(255,255,255,0) 42%),
     radial-gradient(85% 75% at 72% 90%, rgba(255,255,255,.14) 0%, rgba(255,255,255,0) 55%);
   mix-blend-mode:screen;
 }
-#loupe::after {            /* refraction rim */
+#loupe::after {             /* chromatic refraction rim */
   content:''; position:absolute; inset:0; border-radius:50%; pointer-events:none;
-  border:1px solid rgba(255,255,255,.28);
-  box-shadow:inset 0 0 16px 3px rgba(255,255,255,.16), inset 0 0 2px rgba(255,255,255,.6);
+  box-shadow:
+    inset 0 0 0 2px rgba(120,200,255,.55),
+    inset 0 0 0 5px rgba(255,110,30,.3),
+    inset 0 0 26px 7px rgba(255,255,255,.15);
+  mix-blend-mode:screen;
 }
 
 /* right: thumbnail strip */
@@ -451,30 +460,32 @@ function spawnFromMenu(kind){
 }
 
 // ── LOUPE (liquid-glass magnifier, originals lazy-loaded) ──
-const loupeEl=document.createElement('div'); loupeEl.id='loupe'; document.body.appendChild(loupeEl);
+const loupeEl=document.createElement('div'); loupeEl.id='loupe';
+loupeEl.innerHTML='<div class="ch r"></div><div class="ch g"></div><div class="ch b"></div><div class="lg"></div>';
+document.body.appendChild(loupeEl);
 const LOUPE_R=150, LOUPE_ZOOM=3.5;
 const fullCache={};
 function ensureFull(src){ if(fullCache[src])return fullCache[src]; const rec={loaded:false}; const img=new Image(); rec.img=img; img.onload=()=>rec.loaded=true; img.src=src; fullCache[src]=rec; return rec; }
 function attachLoupe(item){
   const img=item.querySelector('img'); if(!img)return;
   const full=item.dataset.full||img.getAttribute('src');
-  item.addEventListener('mouseenter',()=>{ ensureFull(full); }); // load original only now
+  item.addEventListener('mouseenter',()=>{ ensureFull(full); item.classList.add('loupe-active'); }); // load original only now + blur base
   item.addEventListener('mousemove',ev=>{
     const rect=img.getBoundingClientRect();
     const x=ev.clientX-rect.left, y=ev.clientY-rect.top;
     if(x<0||y<0||x>rect.width||y>rect.height){ loupeEl.classList.remove('show'); return; }
     const rec=ensureFull(full);
     const bg=rec.loaded?full:img.getAttribute('src');
-    loupeEl.style.backgroundImage=`url("${bg}")`;
-    loupeEl.style.backgroundSize=`${rect.width*LOUPE_ZOOM}px ${rect.height*LOUPE_ZOOM}px`;
-    loupeEl.style.backgroundPosition=`${LOUPE_R-x*LOUPE_ZOOM}px ${LOUPE_R-y*LOUPE_ZOOM}px`;
+    loupeEl.style.setProperty('--img',`url("${bg}")`);
+    loupeEl.style.setProperty('--bs',`${rect.width*LOUPE_ZOOM}px ${rect.height*LOUPE_ZOOM}px`);
+    loupeEl.style.setProperty('--bp',`${LOUPE_R-x*LOUPE_ZOOM}px ${LOUPE_R-y*LOUPE_ZOOM}px`);
     loupeEl.style.left=(ev.clientX-LOUPE_R)+'px';
     loupeEl.style.top=(ev.clientY-LOUPE_R)+'px';
     loupeEl.classList.add('show');
   });
-  item.addEventListener('mouseleave',()=>{ loupeEl.classList.remove('show'); });
+  item.addEventListener('mouseleave',()=>{ loupeEl.classList.remove('show'); item.classList.remove('loupe-active'); });
 }
-function hideLoupe(){ loupeEl.classList.remove('show'); }
+function hideLoupe(){ loupeEl.classList.remove('show'); document.querySelectorAll('.pv-item.photo.loupe-active').forEach(i=>i.classList.remove('loupe-active')); }
 
 // ── POPUP ──
 const popupEl=document.getElementById('popup'), poScroller=document.getElementById('po-scroller'), poRight=document.getElementById('po-right');
