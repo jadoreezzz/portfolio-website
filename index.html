@@ -379,6 +379,14 @@ const FIZULI = { id:'fizuli', name:'FIZULI', spawnDX:430, spawnDY:-60,
   images:['photos/fizuli/01.jpg','photos/fizuli/02.jpg'].map(vp),
   full:['photos/fizuli/full/01.jpg','photos/fizuli/full/02.jpg'].map(vp) };
 
+const RACERWORLDWIDE = { id:'racerworldwide', name:'RACERWORLDWIDE', spawnDX:430, spawnDY:380,
+  desc:{
+    ru:'AD test концепт съёмки для бренда RACERWORLDWIDE, используя одежду и продукты бренда, разноплановая работа, с несколькими оформлениями окружения, выдержана консистентность всех продуктов и модели. Был сделан цветкор отдельно.',
+    en:'An AD test shooting concept for the RACERWORLDWIDE brand, using the brand’s clothing and products — a varied body of work across several environment setups, with full consistency kept across all products and the model. Color correction was done separately.'
+  },
+  images:Array.from({length:14},(_,i)=>`photos/racerworldwide/${String(i+1).padStart(2,'0')}.jpg`).map(vp),
+  full:Array.from({length:14},(_,i)=>`photos/racerworldwide/full/${String(i+1).padStart(2,'0')}.jpg`).map(vp) };
+
 const world=document.getElementById('world'), connSvg=document.getElementById('conn'), canvas=document.getElementById('canvas'), gridEl=document.getElementById('grid');
 let pan={x:0,y:0}, zoom=1, nid=0, nodes=[], edges=[];
 const PAN_FRICTION=.88, DRAG_LERP=.18, NODE_FRICTION=.82, ZOOM_SMOOTH=.13;
@@ -857,6 +865,7 @@ spawnProject(PROJECTS[0],hub.id);
 spawnProject(PROJECTS[1],hub.id);
 const photoHub=createHub(hub.x, hub.y+720, {title:'AI Photo<br>Direction', sub:'photo direction', hint:'category', badge:'live'});
 spawnProject(FIZULI,photoHub.id);
+spawnProject(RACERWORLDWIDE,photoHub.id);
 pan.x=CX-(110+430/2)*zoom; pan.y=CY-150*zoom; applyT();
 setTimeout(()=>toast('double-click anywhere for the menu'),900);
 </script>
