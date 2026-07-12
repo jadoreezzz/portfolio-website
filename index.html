@@ -621,7 +621,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&popupOpen)closePopu
 popupEl.addEventListener('wheel',e=>{
   if(!popupOpen || e.target.closest('#po-right') || e.target.closest('#po-scroller'))return;
   e.preventDefault();
-  poScroller.scrollTop+=e.deltaY;
+  poScroller.scrollBy({top:e.deltaY,left:0,behavior:'auto'});
 },{passive:false});
 
 // ── SELECTION / DELETE / UNDO ──
