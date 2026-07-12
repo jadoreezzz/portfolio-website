@@ -609,9 +609,16 @@ function closePopup(){
 }
 
 document.getElementById('popup-close').addEventListener('click',closePopup);
-// click on squeeze (dark bg) closes
-document.getElementById('squeeze').addEventListener('click',closePopup);
+// click on empty space inside the popup (not on the photo/description/thumbs) closes it
+popupEl.addEventListener('click',e=>{ if(e.target===popupEl) closePopup(); });
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&popupOpen)closePopup();});
+
+// scroll/swipe the slide carousel from anywhere inside the popup, not just over the photo
+popupEl.addEventListener('wheel',e=>{
+  if(!popupOpen || e.target.closest('#po-right'))return;
+  e.preventDefault();
+  poScroller.scrollTop+=e.deltaY;
+},{passive:false});
 
 // ── SELECTION / DELETE / UNDO ──
 let selectedNode=null, undoStack=[];
