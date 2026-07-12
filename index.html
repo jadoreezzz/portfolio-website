@@ -504,8 +504,10 @@ function ensureFull(src){ if(fullCache[src])return fullCache[src]; const rec={lo
 function attachLoupe(item){
   const img=item.querySelector('img'); if(!img)return;
   const full=item.dataset.full||img.getAttribute('src');
-  item.addEventListener('mouseenter',()=>{ ensureFull(full); item.classList.add('loupe-active'); }); // load original only now + blur base
-  item.addEventListener('mousemove',ev=>{
+  // hover targets the image itself, not the (much taller) flex slide around it —
+  // otherwise the empty space above/below a landscape photo would still trigger blur
+  img.addEventListener('mouseenter',()=>{ ensureFull(full); item.classList.add('loupe-active'); });
+  img.addEventListener('mousemove',ev=>{
     const rect=img.getBoundingClientRect();
     const x=ev.clientX-rect.left, y=ev.clientY-rect.top;
     if(x<0||y<0||x>rect.width||y>rect.height){ loupeEl.classList.remove('show'); warpEl.classList.remove('show'); return; }
@@ -525,7 +527,7 @@ function attachLoupe(item){
     warpEl.style.backgroundPosition=`${rect.left-(cx-WARP_R)}px ${rect.top-(cy-WARP_R)}px`;
     warpEl.classList.add('show');
   });
-  item.addEventListener('mouseleave',()=>{ loupeEl.classList.remove('show'); warpEl.classList.remove('show'); item.classList.remove('loupe-active'); });
+  img.addEventListener('mouseleave',()=>{ loupeEl.classList.remove('show'); warpEl.classList.remove('show'); item.classList.remove('loupe-active'); });
 }
 function hideLoupe(){ loupeEl.classList.remove('show'); warpEl.classList.remove('show'); document.querySelectorAll('.pv-item.photo.loupe-active').forEach(i=>i.classList.remove('loupe-active')); }
 
@@ -613,9 +615,11 @@ document.getElementById('popup-close').addEventListener('click',closePopup);
 popupEl.addEventListener('click',e=>{ if(e.target===popupEl) closePopup(); });
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&popupOpen)closePopup();});
 
-// scroll/swipe the slide carousel from anywhere inside the popup, not just over the photo
+// scroll/swipe the slide carousel from anywhere inside the popup, not just over the photo.
+// only forward when the wheel event lands OUTSIDE po-scroller — inside it, native
+// overflow+scroll-snap already handles the gesture, and double-driving it fights the snap.
 popupEl.addEventListener('wheel',e=>{
-  if(!popupOpen || e.target.closest('#po-right'))return;
+  if(!popupOpen || e.target.closest('#po-right') || e.target.closest('#po-scroller'))return;
   e.preventDefault();
   poScroller.scrollTop+=e.deltaY;
 },{passive:false});
