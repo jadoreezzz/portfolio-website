@@ -70,7 +70,10 @@ body.popup-open #squeeze { opacity:1; pointer-events:all; }
   width:100%; height:100%; overflow-y:scroll; overflow-x:hidden;
   scroll-snap-type:y mandatory; scrollbar-width:none;
   display:flex; flex-direction:column; align-items:center; gap:12px;
-  padding:8px 0;
+  /* generous top/bottom padding so the FIRST and LAST slide can still be scrolled
+     all the way to dead center — with only a few px of padding there isn't enough
+     room above/below them to reach center, so they stay pinned to the edge */
+  padding:50vh 0;
 }
 #po-scroller::-webkit-scrollbar { display:none; }
 
@@ -86,8 +89,9 @@ body.popup-open #squeeze { opacity:1; pointer-events:all; }
 .pv-item.photo { width:auto; height:82vh; aspect-ratio:auto; border-radius:0; overflow:visible; background:transparent; display:flex; align-items:center; justify-content:center; }
 .pv-item.photo img { width:auto; height:auto; max-width:min(60vw,900px); max-height:74vh; object-fit:contain; border-radius:14px; }
 .pv-item .pv-num { position:absolute; bottom:10px; left:12px; font-size:8px; color:rgba(255,255,255,.25); letter-spacing:.06em; }
-.pv-item.photo { cursor:none; }
-.pv-item.photo img { transition:filter .38s ease; }
+/* cursor only hides over the actual image — the slide box is much taller (centers the
+   photo vertically), so hiding it on the whole box left the cursor invisible in the margins */
+.pv-item.photo img { cursor:none; transition:filter .38s ease; }
 .pv-item.photo.loupe-active img { filter:blur(12px) brightness(.97); }
 
 /* ── warp ring: liquid "pull" of the blurred surroundings, only OUTSIDE the lens ── */
@@ -503,10 +507,18 @@ function ensureFull(src){ if(fullCache[src])return fullCache[src]; const rec={lo
 function attachLoupe(item){
   const img=item.querySelector('img'); if(!img)return;
   const full=item.dataset.full||img.getAttribute('src');
+  // the popup can open with the cursor already resting over the photo (from the click
+  // that opened it) — Chrome then fires a "free" mouseenter with no real mouse movement.
+  // Ignore that very first hover; only a genuine leave-then-re-enter arms the loupe.
+  let armed=false;
   // hover targets the image itself, not the (much taller) flex slide around it —
   // otherwise the empty space above/below a landscape photo would still trigger blur
-  img.addEventListener('mouseenter',()=>{ ensureFull(full); item.classList.add('loupe-active'); });
+  img.addEventListener('mouseenter',()=>{
+    if(!armed){ armed=true; return; }
+    ensureFull(full); item.classList.add('loupe-active');
+  });
   img.addEventListener('mousemove',ev=>{
+    if(!item.classList.contains('loupe-active'))return;
     const rect=img.getBoundingClientRect();
     const x=ev.clientX-rect.left, y=ev.clientY-rect.top;
     if(x<0||y<0||x>rect.width||y>rect.height){ loupeEl.classList.remove('show'); warpEl.classList.remove('show'); return; }
@@ -564,7 +576,8 @@ function openPopup(proj){
     if(!isVideo) attachLoupe(item);
     popupIO.observe(item);
   });
-  poScroller.scrollTop=0;
+  // center the first slide (padding alone can't do it via scrollTop=0 — see #po-scroller)
+  requestAnimationFrame(()=>{ poScroller.querySelector('.pv-item')?.scrollIntoView({behavior:'instant',block:'center'}); });
 
   // build thumb strip
   poRight.innerHTML='';
