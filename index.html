@@ -45,32 +45,31 @@ body.popup-open #squeeze { opacity:1; pointer-events:all; }
 
 /* left: floating description */
 #po-left {
-  position:absolute; left:clamp(20px,5vw,72px); top:50%;
+  position:absolute; left:clamp(20px,5vw,72px); top:50%; z-index:2;
   transform:translateY(-50%) translateX(-18px);
   width:190px; opacity:0;
   transition:opacity .5s .15s, transform .5s .15s cubic-bezier(.2,.8,.2,1);
-  pointer-events:none;
+  pointer-events:none; /* purely informational — never blocks scroll/click, po-scroller sits underneath */
 }
-#popup.open #po-left { opacity:1; transform:translateY(-50%) translateX(0); pointer-events:all; }
+#popup.open #po-left { opacity:1; transform:translateY(-50%) translateX(0); }
 #pi-tag  { font-size:8px; color:#363636; letter-spacing:.12em; text-transform:uppercase; margin-bottom:10px; }
 #pi-name { font-size:18px; font-weight:700; text-transform:uppercase; letter-spacing:-.02em; color:#c8c8c8; line-height:1.1; margin-bottom:12px; }
 #pi-desc { font-size:9px; color:#2c2c2c; line-height:1.7; text-transform:uppercase; letter-spacing:.04em; }
 #pi-count{ margin-top:16px; font-size:8px; color:#1e1e1e; letter-spacing:.08em; text-transform:uppercase; }
 
-/* center: vertical scroll of 9:16 videos */
+/* center: vertical scroll of 9:16 videos — spans the full popup so wheel/trackpad
+   scrolling is genuinely native (and smooth) everywhere, not just over the photo */
 #po-center {
-  position:absolute; top:50%; left:50%;
-  transform:translate(-50%,-50%) scale(.92);
-  height:82vh; width:auto;
-  display:flex; align-items:flex-start;
+  position:fixed; inset:0; z-index:1;
+  transform:scale(.96);
   opacity:0; transition:opacity .45s .05s, transform .45s .05s cubic-bezier(.2,.8,.2,1);
 }
-#popup.open #po-center { opacity:1; transform:translate(-50%,-50%) scale(1); }
+#popup.open #po-center { opacity:1; transform:scale(1); }
 
 #po-scroller {
-  height:100%; overflow-y:scroll; overflow-x:hidden;
+  width:100%; height:100%; overflow-y:scroll; overflow-x:hidden;
   scroll-snap-type:y mandatory; scrollbar-width:none;
-  display:flex; flex-direction:column; gap:12px;
+  display:flex; flex-direction:column; align-items:center; gap:12px;
   padding:8px 0;
 }
 #po-scroller::-webkit-scrollbar { display:none; }
@@ -126,7 +125,7 @@ body.popup-open #squeeze { opacity:1; pointer-events:all; }
 
 /* right: thumbnail strip */
 #po-right {
-  position:absolute; right:clamp(14px,4vw,56px); top:50%;
+  position:absolute; right:clamp(14px,4vw,56px); top:50%; z-index:2;
   transform:translateY(-50%) translateX(18px);
   display:flex; flex-direction:column; gap:5px;
   max-height:82vh; overflow-y:auto; scrollbar-width:none;
@@ -611,18 +610,21 @@ function closePopup(){
 }
 
 document.getElementById('popup-close').addEventListener('click',closePopup);
-// click on empty space inside the popup (not on the photo/description/thumbs) closes it
-popupEl.addEventListener('click',e=>{ if(e.target===popupEl) closePopup(); });
+// click on empty space inside the popup (not on the photo/description/thumbs) closes it.
+// po-scroller now spans the full popup so wheel/scroll is native everywhere; po-left is
+// pointer-events:none for that same reason, so its text can't be the click target — check
+// its geometry instead, so clicking the readable description still doesn't close the popup.
+const poLeftEl=document.getElementById('po-left');
+popupEl.addEventListener('click',e=>{
+  if(!popupOpen || e.target.closest('img, video, #po-right, #popup-close'))return;
+  const r=poLeftEl.getBoundingClientRect();
+  if(e.clientX>=r.left && e.clientX<=r.right && e.clientY>=r.top && e.clientY<=r.bottom)return;
+  closePopup();
+});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&popupOpen)closePopup();});
-
-// scroll/swipe the slide carousel from anywhere inside the popup, not just over the photo.
-// only forward when the wheel event lands OUTSIDE po-scroller — inside it, native
-// overflow+scroll-snap already handles the gesture, and double-driving it fights the snap.
-popupEl.addEventListener('wheel',e=>{
-  if(!popupOpen || e.target.closest('#po-right') || e.target.closest('#po-scroller'))return;
-  e.preventDefault();
-  poScroller.scrollBy({top:e.deltaY,left:0,behavior:'auto'});
-},{passive:false});
+// no custom wheel forwarding needed anymore — po-scroller covers the whole popup,
+// so every wheel/trackpad gesture is handled by the browser's native scroll-snap,
+// identical everywhere (over the photo or over empty space).
 
 // ── SELECTION / DELETE / UNDO ──
 let selectedNode=null, undoStack=[];
