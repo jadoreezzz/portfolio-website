@@ -52,10 +52,19 @@ body.popup-open #squeeze { opacity:1; pointer-events:all; }
   pointer-events:none; /* purely informational — never blocks scroll/click, po-scroller sits underneath */
 }
 #popup.open #po-left { opacity:1; transform:translateY(-50%) translateX(0); }
-#pi-tag  { font-size:8px; color:#363636; letter-spacing:.12em; text-transform:uppercase; margin-bottom:10px; }
-#pi-name { font-size:18px; font-weight:700; text-transform:uppercase; letter-spacing:-.02em; color:#c8c8c8; line-height:1.1; margin-bottom:12px; }
+#pi-head { display:flex; align-items:baseline; flex-wrap:wrap; gap:9px; margin-bottom:12px; }
+#pi-name { font-size:18px; font-weight:700; text-transform:uppercase; letter-spacing:-.02em; color:#c8c8c8; line-height:1.1; }
+#pi-views { display:none; align-items:center; gap:4px; font-size:9px; color:#3a3a3a; letter-spacing:.03em; }
+#pi-views.show { display:inline-flex; }
+#pi-views svg { width:11px; height:11px; opacity:.75; flex-shrink:0; }
 #pi-desc { font-size:9px; color:#2c2c2c; line-height:1.7; text-transform:uppercase; letter-spacing:.04em; }
-#pi-count{ margin-top:16px; font-size:8px; color:#1e1e1e; letter-spacing:.08em; text-transform:uppercase; }
+#pi-tools { display:flex; flex-wrap:wrap; gap:6px; margin-top:14px; }
+.pi-tool {
+  font-size:7px; letter-spacing:.06em; text-transform:uppercase; color:#494949;
+  border:1px solid #232323; background:#111; border-radius:20px; padding:5px 11px;
+  user-select:none;
+}
+#pi-count{ margin-top:14px; font-size:8px; color:#1e1e1e; letter-spacing:.08em; text-transform:uppercase; }
 
 /* center: vertical scroll of 9:16 videos — spans the full popup so wheel/trackpad
    scrolling is genuinely native (and smooth) everywhere, not just over the photo */
@@ -250,9 +259,15 @@ body.popup-open #squeeze { opacity:1; pointer-events:all; }
 <!-- POPUP -->
 <div id="popup">
   <div id="po-left">
-    <div id="pi-tag"></div>
-    <div id="pi-name"></div>
+    <div id="pi-head">
+      <div id="pi-name"></div>
+      <div id="pi-views">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span id="pi-views-num"></span>
+      </div>
+    </div>
     <div id="pi-desc"></div>
+    <div id="pi-tools"></div>
     <div id="pi-count"></div>
   </div>
   <div id="po-center">
@@ -296,9 +311,15 @@ body.popup-open #squeeze { opacity:1; pointer-events:all; }
 function vp(p){ return p.split('/').map(encodeURIComponent).join('/'); }
 
 const PROJECTS = [
-  { id:'dibrain', name:'Dibrain Studio', tag:'AI · Social Media · 2024', desc:'Content direction and AI-generated visual identity for Dibrain Studio creative brand.', spawnDX:430, spawnDY:-190,
+  { id:'dibrain', name:'Dibrain Studio', spawnDX:430, spawnDY:-190,
+    desc:'AI & CGI студия — агентство, создающее контент для брендов и мероприятий с использованием ИИ и графики. Основное направление — mixed reality, где важны реализм и точное внедрение продукта в среду без потери качества самого продукта или бренда. В портфолио — работы для соц. сетей студии.',
+    views:'3.5M',
+    tools:['Nano Banana 2','Kling 3.0','Seedream 2.0','Photoshop','DaVinci Resolve','Premiere Pro'],
     videos:['videos/dibrain/01.mp4','videos/dibrain/02.mp4','videos/dibrain/03.mp4','videos/dibrain/04.mp4','videos/dibrain/05.mp4','videos/dibrain/06.mp4','videos/dibrain/07.mp4','videos/dibrain/08.mp4'].map(vp) },
-  { id:'huggito', name:'Huggito', tag:'AI · Content · 2024', desc:'AI-driven content strategy and generative visuals for Huggito social presence.', spawnDX:430, spawnDY:230,
+  { id:'huggito', name:'Huggito', spawnDX:430, spawnDY:230,
+    desc:'Создание вирусного контента с фигуркой, существующей только в виде 3D-рендеров. Задача — сохранить консистентность самой фигурки и мелких деталей, а также добавить активное участие людей в генерациях.',
+    views:'~200K',
+    tools:['Nano Banana 2','GPT Image 2','Kling 3.0','Seedream 2.0','Photoshop','DaVinci Resolve','Premiere Pro'],
     videos:['videos/huggito/01.mp4','videos/huggito/02.mp4','videos/huggito/03.mp4','videos/huggito/04.mp4','videos/huggito/05.mp4','videos/huggito/06.mp4','videos/huggito/07.mp4','videos/huggito/08.mp4'].map(vp) }
 ];
 
@@ -311,7 +332,7 @@ const CONTACTS = [
 ];
 
 // ── photo project under "AI Photo Direction" ──
-const FIZULI = { id:'fizuli', name:'FIZULI', tag:'Clothing Brand · Photo', desc:'Photo direction and art direction for FIZULI clothing brand editorial campaign.', spawnDX:430, spawnDY:-60,
+const FIZULI = { id:'fizuli', name:'FIZULI', desc:'Photo direction and art direction for FIZULI clothing brand editorial campaign.', spawnDX:430, spawnDY:-60,
   images:['photos/fizuli/01.jpg','photos/fizuli/02.jpg'].map(vp),
   full:['photos/fizuli/full/01.jpg','photos/fizuli/full/02.jpg'].map(vp) };
 
@@ -553,10 +574,17 @@ function openPopup(proj){
   if(popupOpen)return;
   popupOpen=true; currentProj=proj;
   const media=proj.videos||proj.images||[]; const isVideo=!!proj.videos;
-  document.getElementById('pi-tag').textContent=proj.tag;
   document.getElementById('pi-name').textContent=proj.name;
   document.getElementById('pi-desc').textContent=proj.desc;
   document.getElementById('pi-count').textContent=`${media.length} ${isVideo?'videos':'photos'}`;
+
+  const viewsEl=document.getElementById('pi-views');
+  viewsEl.classList.toggle('show',!!proj.views);
+  document.getElementById('pi-views-num').textContent=proj.views||'';
+
+  const toolsEl=document.getElementById('pi-tools');
+  toolsEl.innerHTML='';
+  (proj.tools||[]).forEach(t=>{ const b=document.createElement('div'); b.className='pi-tool'; b.textContent=t; toolsEl.appendChild(b); });
 
   // build scroll items
   poScroller.innerHTML='';
