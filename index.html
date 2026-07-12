@@ -88,6 +88,9 @@ body.popup-open #squeeze { opacity:1; pointer-events:all; }
 /* photo = one full-height slide, image centered (keeps aspect so loupe maps correctly) */
 .pv-item.photo { width:auto; height:82vh; aspect-ratio:auto; border-radius:0; overflow:visible; background:transparent; display:flex; align-items:center; justify-content:center; }
 .pv-item.photo img { width:auto; height:auto; max-width:min(60vw,900px); max-height:74vh; object-fit:contain; border-radius:14px; }
+/* the slide box is much taller than the photo itself (centers it vertically) — .pv-num
+   must anchor to the photo's own corner, not the tall box, or it drifts far below it */
+.pv-frame { position:relative; display:flex; }
 .pv-item .pv-num { position:absolute; bottom:10px; left:12px; font-size:8px; color:rgba(255,255,255,.25); letter-spacing:.06em; }
 /* cursor only hides over the actual image — the slide box is much taller (centers the
    photo vertically), so hiding it on the whole box left the cursor invisible in the margins */
@@ -568,11 +571,18 @@ function openPopup(proj){
 
   media.forEach((src,i)=>{
     const item=document.createElement('div'); item.className='pv-item'+(isVideo?'':' photo');
-    let m;
-    if(isVideo){ m=document.createElement('video'); m.src=src; m.muted=true; m.playsInline=true; m.preload='auto'; m.loop=true; }
-    else { m=document.createElement('img'); m.src=src; m.alt=''; item.dataset.full=(proj.full&&proj.full[i])||src; }
     const num=document.createElement('div'); num.className='pv-num'; num.textContent=String(i+1).padStart(2,'0');
-    item.append(m,num); poScroller.appendChild(item);
+    if(isVideo){
+      const v=document.createElement('video'); v.src=src; v.muted=true; v.playsInline=true; v.preload='auto'; v.loop=true;
+      item.append(v,num);
+    } else {
+      // wrap img+num together so the number anchors to the photo itself, not the
+      // (much taller) slide box that centers it
+      const frame=document.createElement('div'); frame.className='pv-frame';
+      const img=document.createElement('img'); img.src=src; img.alt=''; item.dataset.full=(proj.full&&proj.full[i])||src;
+      frame.append(img,num); item.append(frame);
+    }
+    poScroller.appendChild(item);
     if(!isVideo) attachLoupe(item);
     popupIO.observe(item);
   });
